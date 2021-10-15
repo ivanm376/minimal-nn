@@ -1,7 +1,7 @@
 let weights = [0.42, 0.17, 0.78, 0.55, 0.22, 0.99, 0.12, 0.88]; // random weights
 // const error = 0.05
-const learnRate = 0.02;
-const round = x => Math.round(x * 1000) / 1000; // 0.42851.. >> 0.43
+const learnRate = 0.003; // 0.3 %
+const round = x => Math.round(x * 10000) / 10000; // 0.42851.. >> 0.43
 const sigmoid = x => round(1 / (1 + Math.exp(-x))); // range: 0 - 1
 
 //  i1 - w1 - n1 - w5 - r1 (e1)
@@ -33,7 +33,7 @@ const projectWeight = (input, weight) => {
     return input * weight * 2; // result 0 - 1
   }
 };
-const calculateInput = (result, weight) => {
+const projectWeightBack = (result, weight) => {
   if (weight >= 0.5) {
     // 0.92 === 0.9 + (1 - 0.9) * (0.6 * 2 - 1)
     // 0.92 === x + (1 - x) * (0.6 * 2 - 1)
@@ -46,17 +46,17 @@ const calculateInput = (result, weight) => {
   }
 };
 
-const config = { layers: [2, 3, 2] };
+const config = { layers: [2, 5, 5, 2] };
 const { layers } = config;
 let weightId = 0; // weights count
 let neuronId = 0;
-const network = [];
+let network = [];
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
-    const neuron = { input: [], output: [], neuronId: neuronId++, layerId: index };
+    const neuron = { input: [], output: [], id: neuronId++, layerId: index };
     if (neuronsCountPrevLayer) {
       network[index - 1].forEach(neuronPrev => {
         neuronPrev.output.forEach((weight, weightIndex) => {
@@ -76,19 +76,33 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
 });
 const printNetwork = () => {
   const layerMap = neuron => ({
-    id: neuron.neuronId,
+    id: neuron.id,
     layer: `L${neuron.layerId}`,
     input: neuron.input.map(weight => `id:${weight.id} value:${weight.value}`).join(' | '),
-    value: neuron.value || 0,
-    expected: neuron.expected || 0, // expected value
-    output: neuron.output.map(weight => `id:${weight.id} value:${weight.value}`).join('\t| '),
+    value: neuron.value,
+    expected: neuron.expected, // expected value
+    output: neuron.output.map(weight => `id:${weight.id} value:${weight.value}`).join(' | '),
   });
   console.table(network.reduce((a, b) => a.concat(b)).map(layerMap));
 };
 // printNetwork();debugger;
 
-const run = (input, expected) => {
-  network[0].forEach((neuron, index) => (neuron.value = input[index])); // set initial input
+const run = (input, expected = []) => {
+  // printNetwork();
+  // debugger;
+  network.forEach((layer, layerIndex) => {
+    // set initial values
+    layer.forEach((neuron, index) => {
+      neuron.value = layerIndex === 0 ? input[index] : 0;
+      if (expected.length) {
+        neuron.expected = layerIndex === network.length - 1 ? expected[index] : 0;
+      } else {
+        delete neuron.expected;
+      }
+    });
+  });
+  // printNetwork();
+  // debugger;
 
   // PROJECT VALUES:
   network.forEach((layer, layerIndex) => {
@@ -104,83 +118,28 @@ const run = (input, expected) => {
   });
 
   // TRAIN:
-  if (expected) {
-    printNetwork();
-    debugger;
-    network[network.length - 1].forEach((neuron, index) => (neuron.expected = expected[index]));
-    printNetwork();
-    debugger;
+  if (expected.length) {
     for (let layerIndex = network.length - 1; layerIndex >= 0; layerIndex--) {
-      console.log(layerIndex);
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
-      console.log(layerIndex, layer, prevLayer);
+      // console.log(layerIndex, layer, prevLayer);
       layer.forEach((neuron, neuronIndex) => {
-        neuron.output.forEach((weight, weightIndex) => {
-          // console.log(round(projectWeight(neuron.value, weight.value)));
-          prevLayer[weightIndex].value += projectWeight(neuron.value, weight.value);
-          nextLayer[weightIndex].value = round(nextLayer[weightIndex].value);
+        neuron.input.forEach((weight, weightIndex) => {
+          weight.value = adjustWeight(weight.value, neuron.value < neuron.expected);
+          prevLayer[weightIndex].expected += round(projectWeightBack(neuron.value, weight.value));
+          prevLayer[weightIndex].expected = round(prevLayer[weightIndex].expected);
         });
       });
-
-      adjustWeight(weight, result < expectedResult[resultIndex]);
     }
-    printNetwork();
-    debugger;
-    ///
-
-    const valuesReversed = values.slice().reverse();
-    const networkReversed = JSON.parse(JSON.stringify(network)).slice().reverse();
-    const networkReversedCopy = JSON.parse(JSON.stringify(networkReversed));
-    let expectedResult = expected;
-    valuesReversed.forEach((results, reversedIndex) => {
-      results.forEach((result, resultIndex) => {
-        networkReversedCopy[reversedIndex][resultIndex] = networkReversed[reversedIndex][resultIndex].map(weight =>
-          adjustWeight(weight, result < expectedResult[resultIndex])
-        );
-        debugger;
-      });
-    });
   }
-  debugger;
-
-  // const [i1, i2] = input;
-  // const [w1, w2, w3, w4, w5, w6, w7, w8] = weights;
-  // const n1 = round((projectWeight(i1, w1) + projectWeight(i2, w3)) / 2);
-  // const n2 = round((projectWeight(i1, w2) + projectWeight(i2, w4)) / 2);
-  // const r1 = round((projectWeight(n1, w5) + projectWeight(n2, w7)) / 2);
-  // const r2 = round((projectWeight(n1, w6) + projectWeight(n2, w8)) / 2);
-  // let logString = `input:[${i1},${i2}] result:[${r1},${r2}]`;
-  // let logWeights = `weights:\t${weights.join('\t')}`;
-  if (train) {
-    const updatedWeights = weights.slice();
-    const [e1, e2] = expected;
-    logString += ` expected:[${e1},${e2}]`;
-
-    updatedWeights[4] = adjustWeight(w5, r1 < e1);
-    updatedWeights[5] = adjustWeight(w6, r2 < e2);
-    updatedWeights[6] = adjustWeight(w7, r1 < e1);
-    updatedWeights[7] = adjustWeight(w8, r2 < e2);
-
-    const newN1 = round((calculateInput(e1, updatedWeights[4]) + calculateInput(e2, updatedWeights[5])) / 2);
-    // console.log(e1, updatedWeights[4], e2, updatedWeights[5], ':', n1, newN1);
-    const newN2 = round((calculateInput(e1, updatedWeights[6]) + calculateInput(e2, updatedWeights[7])) / 2);
-
-    updatedWeights[0] = adjustWeight(w1, n1 < newN1);
-    updatedWeights[1] = adjustWeight(w2, n2 < newN2);
-    updatedWeights[2] = adjustWeight(w3, n1 < newN1);
-    updatedWeights[3] = adjustWeight(w4, n2 < newN2);
-
-    logWeights += `\nupdatedWeights:\t${updatedWeights.join('\t')}`;
-    // setTimeout(() => run(input), 100);
-    return updatedWeights;
-  }
-  console.log(`${logString}\n${logWeights}`);
 };
 
+run([0.2, 0.7]);
+printNetwork();
+debugger;
+
 const setExpected = x => round((Math.random() + x) / 2);
-// run([0.2, 0.7]);
-for (let i = 0; i < 3; i++) {
+for (let i = 0; i < 999; i++) {
   let expected = [Math.floor(Math.random() * 2)]; // config expected result
   expected[1] = expected[0] === 0 ? 1 : 0;
   const input = [setExpected(expected[0]), setExpected(expected[1])];
@@ -188,7 +147,9 @@ for (let i = 0; i < 3; i++) {
   // console.log(input, expected);
   // console.log(weights.join('\t'));
 }
-run([0.2, 0.7]); // check
 
-// adjustWeight(0.69, 0, 0.5, 0.77);
+run([0.2, 0.7]); // check
+printNetwork();
+debugger;
+
 // const propagated_error = weight * weightsDelta;
