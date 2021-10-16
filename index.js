@@ -1,17 +1,6 @@
-let weights = [0.42, 0.17, 0.78, 0.55, 0.22, 0.99, 0.12, 0.88]; // random weights
 // const error = 0.05
-const learnRate = 0.003; // 0.3 %
+const learnRate = 0.002; // 0.2 %
 const round = x => Math.round(x * 10000) / 10000; // 0.42851.. >> 0.43
-const sigmoid = x => round(1 / (1 + Math.exp(-x))); // range: 0 - 1
-
-//  i1 - w1 - n1 - w5 - r1 (e1)
-//     - w2 -    - w6 -
-//  i2 - w3 - n2 - w7 - r2 (e2)
-//     - w4 -    - w8 -
-// i     w     r
-// 0.6   1   > 1
-// 0.6   0.5 > 0.6
-// 0.6   0   > 0
 
 const adjustWeight = (oldWeight, increase) => {
   if (increase) {
@@ -46,7 +35,7 @@ const projectWeightBack = (result, weight) => {
   }
 };
 
-const config = { layers: [2, 5, 5, 2] };
+const config = { layers: [2, 1, 2] };
 const { layers } = config;
 let weightId = 0; // weights count
 let neuronId = 0;
@@ -74,22 +63,21 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
   }
   network.push(layer);
 });
+const joinString = i => i.join(' | ').slice(0, 60);
 const printNetwork = () => {
   const layerMap = neuron => ({
     id: neuron.id,
     layer: `L${neuron.layerId}`,
-    input: neuron.input.map(weight => `id:${weight.id} value:${weight.value}`).join(' | '),
+    input: joinString(neuron.input.map(weight => `id:${weight.id} value:${weight.value}`)),
     value: neuron.value,
     expected: neuron.expected, // expected value
-    output: neuron.output.map(weight => `id:${weight.id} value:${weight.value}`).join(' | '),
+    output: joinString(neuron.output.map(weight => `id:${weight.id} value:${weight.value}`)),
   });
   console.table(network.reduce((a, b) => a.concat(b)).map(layerMap));
 };
 // printNetwork();debugger;
 
 const run = (input, expected = []) => {
-  // printNetwork();
-  // debugger;
   network.forEach((layer, layerIndex) => {
     // set initial values
     layer.forEach((neuron, index) => {
@@ -101,54 +89,98 @@ const run = (input, expected = []) => {
       }
     });
   });
-  // printNetwork();
-  // debugger;
 
   // PROJECT VALUES:
   network.forEach((layer, layerIndex) => {
     const nextLayer = network[layerIndex + 1] || [];
     layer.forEach((neuron, neuronIndex) => {
       neuron.output.forEach((weight, weightIndex) => {
-        // console.log(round(projectWeight(neuron.value, weight.value)));
-        nextLayer[weightIndex].value += projectWeight(neuron.value, weight.value);
-        nextLayer[weightIndex].value = round(nextLayer[weightIndex].value);
+        const addedValue = projectWeight(neuron.value, weight.value);
+        // console.log(
+        //   `${neuron.id} > ${nextLayer[weightIndex].id} : projectWeight(${neuron.value}`,
+        //   `, ${weight.value})=${round(addedValue)}`
+        // );
+        ///// nextLayer[weightIndex] === nextLayer.find(i => i.input.find(j => j.id === weight.id))
+        nextLayer[weightIndex].value = round(nextLayer[weightIndex].value + addedValue);
       });
     });
     nextLayer.forEach(neuron => (neuron.value = round(neuron.value / layer.length)));
   });
 
+  let error = [];
+
   // TRAIN:
   if (expected.length) {
+    // printNetwork();
+    // debugger;
     for (let layerIndex = network.length - 1; layerIndex >= 0; layerIndex--) {
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
-      // console.log(layerIndex, layer, prevLayer);
       layer.forEach((neuron, neuronIndex) => {
+        if (layerIndex === network.length - 1) {
+          // debugger;
+          if (neuron.expected === 1) {
+            error.unshift(`\t${neuron.expected}\t${neuron.value}\t`);
+          } else {
+            error.push(`\t${neuron.expected}\t${neuron.value}\t`);
+          }
+        }
         neuron.input.forEach((weight, weightIndex) => {
-          weight.value = adjustWeight(weight.value, neuron.value < neuron.expected);
-          prevLayer[weightIndex].expected += round(projectWeightBack(neuron.value, weight.value));
-          prevLayer[weightIndex].expected = round(prevLayer[weightIndex].expected);
+          const addedValue = projectWeight(prevLayer[weightIndex].value, weight.value);
+          const delta = neuron.expected - addedValue;
+          //// const delta = neuron.value - addedValue;
+          const oldWValue = weight.value;
+          let newWValue = weight.value;
+          if (delta > 0) {
+            newWValue += (1 - weight.value) * (delta / neuron.value) * learnRate; // increase
+          } else {
+            newWValue += weight.value * (delta / neuron.value) * learnRate; // decrease
+          }
+          if (newWValue < 0 || newWValue > 1) {
+            debugger;
+          }
+          // const b = projectWeight(prevLayer[weightIndex].value, newWValue);
+
+          weight.value = round(newWValue);
+
+          // console.log(
+          //   `${prevLayer[weightIndex].id} > ${neuron.id} : projectWeight(${prevLayer[weightIndex].value}`,
+          //   `, ${weight.value})=${round(addedValue)}`
+          // );
+          // debugger;
+
+          const addedExpected = projectWeightBack(addedValue, newWValue);
+          // console.log(round(prevLayer[weightIndex].expected), '+', round(addedExpected));
+          prevLayer[weightIndex].expected = round(prevLayer[weightIndex].expected + addedExpected);
+          // printNetwork();
+          // debugger;
         });
       });
+      prevLayer.forEach(neuron => (neuron.expected = round(neuron.expected / layer.length)));
+      // printNetwork();
+      // debugger;
     }
   }
+  // printNetwork();
+  // debugger;
+  return error;
 };
 
 run([0.2, 0.7]);
 printNetwork();
-debugger;
 
 const setExpected = x => round((Math.random() + x) / 2);
-for (let i = 0; i < 999; i++) {
-  let expected = [Math.floor(Math.random() * 2)]; // config expected result
+for (let i = 0; i < 99999; i++) {
+  const expected = [Math.floor(Math.random() * 2)]; // config expected result
   expected[1] = expected[0] === 0 ? 1 : 0;
-  const input = [setExpected(expected[0]), setExpected(expected[1])];
-  weights = run(input, expected);
-  // console.log(input, expected);
-  // console.log(weights.join('\t'));
+  const error = run([setExpected(expected[0]), setExpected(expected[1])], expected);
+
+  if (i % 10 === 0) {
+    // console.log(i, '\t', error.join('\t'));
+  }
 }
 
-run([0.2, 0.7]); // check
+run([0.2, 0.7]);
 printNetwork();
 debugger;
 
