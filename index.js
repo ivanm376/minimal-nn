@@ -12,11 +12,11 @@ let trainedNet; // pre-trained network example, uncomment bellow:
 // ];
 
 const layers = [2, 1, 2];
-let network = [];
+const network = [];
 let neuronId = 0;
 let weightId = 0;
 const sigmoid = x => 1 / (1 + Math.exp(-x));
-const learnRate = 0.5;
+const learnRate = 0.7;
 const momentum = 0.1;
 
 // NETWORK INITIALIZATION:
