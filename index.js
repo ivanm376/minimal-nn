@@ -1,10 +1,4 @@
-// const error = 0.05
-const sigmoid = x => 1 / (1 + Math.exp(-x));
-const learnRate = 0.5;
-const momentum = 0.1;
-const round = x => Math.round(x * 10000) / 10000; // 0.42851.. >> 0.43
-
-let trainedNet;
+let trainedNet; // pre-trained network example, uncomment bellow:
 // trainedNet = [
 //   [
 //     { bias: 0.03170031433221565, output: [-7.469626099371924] },
@@ -17,11 +11,14 @@ let trainedNet;
 //   ],
 // ];
 
-const config = { layers: [2, 1, 2] };
-const { layers } = config;
+const layers = [2, 1, 2];
 let network = [];
 let neuronId = 0;
 let weightId = 0;
+const sigmoid = x => 1 / (1 + Math.exp(-x));
+const learnRate = 0.5;
+const momentum = 0.1;
+
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
@@ -47,6 +44,7 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
   }
   network.push(layer);
 });
+const round = x => Math.round(x * 10000) / 10000; // 0.4115000143.. -> 0.4115
 const joinString = i => i.join(' | ').slice(0, 90);
 const weightString = w => `id:${w.id} value:${round(w.value)} change:${round(w.change)}`;
 const printNetwork = () => {
@@ -65,6 +63,7 @@ const printNetwork = () => {
   const trainedNet = network.map(l => l.map(n => ({ bias: n.bias, output: n.output.map(w => w.value) })));
   console.log(`trainedNet JSON:`, JSON.stringify(trainedNet));
 };
+
 // printNetwork();debugger;
 
 const run = (input, expected = []) => {
@@ -72,12 +71,8 @@ const run = (input, expected = []) => {
   network.forEach((layer, layerIndex) => {
     // set initial values
     layer.forEach((neuron, index) => {
-      neuron.value = layerIndex === 0 ? input[index] : 0;
-      if (expected.length) {
-        neuron.expected = layerIndex === network.length - 1 ? expected[index] : 0;
-      } else {
-        delete neuron.expected;
-      }
+      neuron.value = layerIndex === 0 ? input[index] : 0; // set input
+      neuron.expected = layerIndex === network.length - 1 ? expected[index] : '-'; // set expected
     });
   });
 
@@ -144,13 +139,13 @@ const run = (input, expected = []) => {
 
 // printNetwork();debugger;
 
-const setExpected = x => round((Math.random() + x) / 2);
 for (let i = 0; i < 10000; i++) {
-  const expected = [Math.floor(Math.random() * 2)]; // config expected result
+  const expected = [Math.floor(Math.random() * 2)];
   expected[1] = expected[0] === 0 ? 1 : 0;
-  run([setExpected(expected[0]), setExpected(expected[1])], expected);
+  const input = expected.map(x => round((Math.random() + x) / 2));
+  run(input, expected); // train
   if (i % 500 === 0) {
-    const result = run([0.2, 0.6], [0, 1]); // expected [0, 1];
+    const result = run([0.2, 0.6]); // expected [0, 1];
     if (result[0] < 0.02) {
       console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
       break;
@@ -161,4 +156,3 @@ for (let i = 0; i < 10000; i++) {
 }
 
 printNetwork();
-// debugger;
