@@ -4,18 +4,31 @@ const learnRate = 0.5;
 const momentum = 0.1;
 const round = x => Math.round(x * 10000) / 10000; // 0.42851.. >> 0.43
 
+let trainedNet;
+// trainedNet = [
+//   [
+//     { bias: 0.03170031433221565, output: [-7.469626099371924] },
+//     { bias: -0.0633157356352152, output: [7.332374145567543] },
+//   ],
+//   [{ bias: 0.22367691657209912, output: [-7.977731379883116, 7.9752563637802165] }],
+//   [
+//     { bias: 3.6543471429420475, output: [] },
+//     { bias: -3.6531504158918713, output: [] },
+//   ],
+// ];
+
 const config = { layers: [2, 1, 2] };
 const { layers } = config;
-let weightId = 0; // weights count
-let neuronId = 0;
 let network = [];
+let neuronId = 0;
+let weightId = 0;
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
     const neuron = { input: [], output: [], delta: 0, error: 0, value: 0, id: neuronId++, layerId: index };
-    neuron.bias = Math.random() * 0.4 - 0.2; // brain.js:1413
+    neuron.bias = trainedNet ? trainedNet[index][i].bias : Math.random() * 0.4 - 0.2; // brain.js:1413
     if (neuronsCountPrevLayer) {
       network[index - 1].forEach(neuronPrev => {
         neuronPrev.output.forEach((weight, weightIndex) => {
@@ -25,7 +38,8 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
     }
     if (neuronsCountNextLayer) {
       for (let j = 0; j < neuronsCountNextLayer; j++) {
-        const weight = { value: Math.random() * 0.4 - 0.2, change: 0, id: weightId++ };
+        const weight = { change: 0, id: weightId++ };
+        weight.value = trainedNet ? trainedNet[index][i].output[j] : Math.random() * 0.4 - 0.2;
         neuron.output.push(weight);
       }
     }
@@ -47,8 +61,9 @@ const printNetwork = () => {
     expected: neuron.expected, // expected value
     output: joinString(neuron.output.map(weightString)),
   });
-  // console.log(JSON.stringify(network));
   console.table(network.flat(1).map(layerMap));
+  const trainedNet = network.map(l => l.map(n => ({ bias: n.bias, output: n.output.map(w => w.value) })));
+  console.log(`trainedNet JSON:`, JSON.stringify(trainedNet));
 };
 // printNetwork();debugger;
 
@@ -84,7 +99,7 @@ const run = (input, expected = []) => {
 
   // TRAIN:
   if (expected.length) {
-    // calculateDeltas:
+    // CALCULATE DELTAS:
     for (let layerIndex = network.length - 1; layerIndex >= 0; layerIndex--) {
       const layer = network[layerIndex];
       const nextLayer = network[layerIndex + 1] || [];
@@ -106,7 +121,7 @@ const run = (input, expected = []) => {
       });
     }
 
-    // adjustWeights:
+    // ADJUST WEIGHTS:
     for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
@@ -127,15 +142,21 @@ const run = (input, expected = []) => {
   return result;
 };
 
-printNetwork();
+// printNetwork();debugger;
 
 const setExpected = x => round((Math.random() + x) / 2);
-for (let i = 0; i < 5000; i++) {
+for (let i = 0; i < 10000; i++) {
   const expected = [Math.floor(Math.random() * 2)]; // config expected result
   expected[1] = expected[0] === 0 ? 1 : 0;
   run([setExpected(expected[0]), setExpected(expected[1])], expected);
-  if (i % 200 === 0) {
-    console.log(`iteration: ${i}\t`, run([0.2, 0.6]));
+  if (i % 500 === 0) {
+    const result = run([0.2, 0.6], [0, 1]); // expected [0, 1];
+    if (result[0] < 0.02) {
+      console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
+      break;
+    } else {
+      console.log(`iteration: ${i}\t\t`, result);
+    }
   }
 }
 
