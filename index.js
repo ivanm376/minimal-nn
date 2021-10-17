@@ -19,6 +19,7 @@ const sigmoid = x => 1 / (1 + Math.exp(-x));
 const learnRate = 0.5;
 const momentum = 0.1;
 
+// NETWORK INITIALIZATION:
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
@@ -44,6 +45,7 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
   }
   network.push(layer);
 });
+
 const round = x => Math.round(x * 10000) / 10000; // 0.4115000143.. -> 0.4115
 const joinString = i => i.join(' | ').slice(0, 90);
 const weightString = w => `id:${w.id} value:${round(w.value)} change:${round(w.change)}`;
