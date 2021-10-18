@@ -11,15 +11,11 @@ let trainedNet; // pre-trained network example, uncomment bellow:
 //   ],
 // ];
 
+// NETWORK INITIALIZATION:
 const layers = [2, 1, 2];
 const network = [];
 let neuronId = 0;
 let weightId = 0;
-const sigmoid = x => 1 / (1 + Math.exp(-x));
-const learnRate = 0.7;
-const momentum = 0.1;
-
-// NETWORK INITIALIZATION:
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
@@ -57,8 +53,7 @@ const printNetwork = () => {
     value: round(neuron.value),
     bias: round(neuron.bias),
     delta: round(neuron.delta),
-    error: round(neuron.delta),
-    expected: neuron.expected, // expected value
+    error: round(neuron.error),
     output: joinString(neuron.output.map(weightString)),
   });
   console.table(network.flat(1).map(layerMap));
@@ -68,15 +63,12 @@ const printNetwork = () => {
 
 // printNetwork();debugger;
 
+const sigmoid = x => 1 / (1 + Math.exp(-x));
+const learnRate = 0.7;
+const momentum = 0.1;
 const run = (input, expected = []) => {
-  input = Float32Array.from(input);
-  network.forEach((layer, layerIndex) => {
-    // set initial values
-    layer.forEach((neuron, index) => {
-      neuron.value = layerIndex === 0 ? input[index] : 0; // set input
-      neuron.expected = layerIndex === network.length - 1 ? expected[index] : '-'; // set expected
-    });
-  });
+  // SET INITIAL VALUES:
+  network[0].forEach((neuron, index) => (neuron.value = input[index])); // set input
 
   // PROJECT VALUES:
   network.forEach((layer, layerIndex) => {
@@ -87,12 +79,9 @@ const run = (input, expected = []) => {
       });
     });
     nextLayer.forEach((neuron, neuronIndex) => {
-      // console.log(neuron.bias === net.biases[layerIndex + 1][neuronIndex]); // - true
       neuron.value = sigmoid(neuron.bias + neuron.value); // bias + sum
     });
   });
-
-  const result = network[network.length - 1].map(i => i.value);
 
   // TRAIN:
   if (expected.length) {
@@ -101,20 +90,15 @@ const run = (input, expected = []) => {
       const layer = network[layerIndex];
       const nextLayer = network[layerIndex + 1] || [];
       layer.forEach((neuron, neuronIndex) => {
-        let error = 0;
-        // neuron.value = 0.46613582968711853;
+        neuron.error = 0;
         if (layerIndex === network.length - 1) {
-          error = neuron.expected - neuron.value;
+          neuron.error = expected[neuronIndex] - neuron.value;
         } else {
-          const deltas = nextLayer.map(i => i.delta); // this.deltas[layer + 1];
-          for (let k = 0; k < deltas.length; k++) {
-            error += deltas[k] * nextLayer[k].input[neuronIndex].value;
-          }
+          nextLayer.forEach(neuronNext => {
+            neuron.error += neuronNext.delta * neuronNext.input[neuronIndex].value;
+          });
         }
-
-        // activeError[neuronIndex] = error; // neuron.error
-        neuron.error = error;
-        neuron.delta = error * neuron.value * (1 - neuron.value); // activeDeltas[neuronIndex]
+        neuron.delta = neuron.error * neuron.value * (1 - neuron.value);
       });
     }
 
@@ -122,24 +106,18 @@ const run = (input, expected = []) => {
     for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
-      const incoming = prevLayer.map(i => i.value);
       layer.forEach((neuron, neuronIndex) => {
         neuron.input.forEach((weight, weightIndex) => {
-          let change = weight.change || 0; // activeChanges[node][k];
-          change = learnRate * neuron.delta * incoming[weightIndex] + momentum * change;
-          // console.log('a2', neuron.delta, incoming[weightIndex], weight.change, change, weight.value);
-          weight.change = change;
-          weight.value += change; // activeWeights[node][k]
+          weight.change = learnRate * neuron.delta * prevLayer[weightIndex].value + momentum * weight.change;
+          weight.value += weight.change;
         });
         neuron.bias += learnRate * neuron.delta;
       });
     }
   }
 
-  return result;
+  return network[network.length - 1].map(i => i.value); // result - last layer values
 };
-
-// printNetwork();debugger;
 
 for (let i = 0; i < 10000; i++) {
   const expected = [Math.floor(Math.random() * 2)];
