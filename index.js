@@ -16,8 +16,9 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountNextLayer = layers[index + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
-    const neuron = { input: [], output: [], delta: 0, error: 0, value: 0, id: neuronId++, layerId: index };
+    const neuron = { input: [], output: [], id: neuronId++, layerId: index };
     if (index > 0) {
+      neuron.value = neuron.delta = neuron.error = 0;
       neuron.bias = trainedNet ? trainedNet[index][i].bias : getRandom();
     }
     if (neuronsCountPrevLayer) {
@@ -48,9 +49,9 @@ const printNetwork = () => {
     layer: `L${neuron.layerId}`,
     ['input weights']: joinString(neuron.input.map(weightString)),
     value: round(neuron.value),
-    bias: (neuron.bias && round(neuron.bias)) || '',
-    delta: round(neuron.delta),
-    error: round(neuron.error),
+    bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
+    delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
+    error: typeof neuron.error === 'number' ? round(neuron.error) : '',
     ['output weights']: joinString(neuron.output.map(weightString)),
   });
   console.table(network.flat(1).map(layerMap));
@@ -92,7 +93,7 @@ const run = (input, expected = []) => {
   // TRAIN:
   if (expected.length) {
     // CALCULATE DELTAS:
-    for (let layerIndex = network.length - 1; layerIndex >= 0; layerIndex--) {
+    for (let layerIndex = network.length - 1; layerIndex > 0; layerIndex--) {
       const layer = network[layerIndex];
       const nextLayer = network[layerIndex + 1] || [];
       layer.forEach((neuron, neuronIndex) => {
