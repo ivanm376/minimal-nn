@@ -1,14 +1,8 @@
 let trainedNet; // pre-trained network example, uncomment bellow:
 // trainedNet = [
-//   [
-//     { bias: 0.03170031433221565, output: [-7.469626099371924] },
-//     { bias: -0.0633157356352152, output: [7.332374145567543] },
-//   ],
-//   [{ bias: 0.22367691657209912, output: [-7.977731379883116, 7.9752563637802165] }],
-//   [
-//     { bias: 3.6543471429420475, output: [] },
-//     { bias: -3.6531504158918713, output: [] },
-//   ],
+//   [{ weights: [-9.05941622825273] }, { weights: [8.749511815472376] }],
+//   [{ bias: -0.45752638281920205, weights: [-8.196013850956946, 8.174752017015699] }],
+//   [{ bias: 3.3835733329507174 }, { bias: -4.372771104374529 }],
 // ];
 
 // NETWORK INITIALIZATION:
@@ -16,13 +10,16 @@ const layers = [2, 1, 2];
 const network = [];
 let neuronId = 0;
 let weightId = 0;
+const getRandom = () => Math.random() * 0.4 - 0.2; // brain.js:1413
 layers.forEach((neuronsCountCurrentLayer, index) => {
   const neuronsCountPrevLayer = layers[index - 1];
   const neuronsCountNextLayer = layers[index + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
     const neuron = { input: [], output: [], delta: 0, error: 0, value: 0, id: neuronId++, layerId: index };
-    neuron.bias = trainedNet ? trainedNet[index][i].bias : Math.random() * 0.4 - 0.2; // brain.js:1413
+    if (index > 0) {
+      neuron.bias = trainedNet ? trainedNet[index][i].bias : getRandom();
+    }
     if (neuronsCountPrevLayer) {
       network[index - 1].forEach(neuronPrev => {
         neuronPrev.output.forEach((weight, weightIndex) => {
@@ -33,7 +30,7 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
     if (neuronsCountNextLayer) {
       for (let j = 0; j < neuronsCountNextLayer; j++) {
         const weight = { change: 0, id: weightId++ };
-        weight.value = trainedNet ? trainedNet[index][i].output[j] : Math.random() * 0.4 - 0.2;
+        weight.value = trainedNet ? trainedNet[index][i].weights[j] : getRandom();
         neuron.output.push(weight);
       }
     }
@@ -49,15 +46,26 @@ const printNetwork = () => {
   const layerMap = neuron => ({
     id: neuron.id,
     layer: `L${neuron.layerId}`,
-    input: joinString(neuron.input.map(weightString)),
+    ['input weights']: joinString(neuron.input.map(weightString)),
     value: round(neuron.value),
-    bias: round(neuron.bias),
+    bias: (neuron.bias && round(neuron.bias)) || '',
     delta: round(neuron.delta),
     error: round(neuron.error),
-    output: joinString(neuron.output.map(weightString)),
+    ['output weights']: joinString(neuron.output.map(weightString)),
   });
   console.table(network.flat(1).map(layerMap));
-  const trainedNet = network.map(l => l.map(n => ({ bias: n.bias, output: n.output.map(w => w.value) })));
+  const trainedNet = network.map((layer, layerIndex) => {
+    return layer.map(n => {
+      const neuronObj = {};
+      if (layerIndex > 0) {
+        neuronObj.bias = n.bias;
+      }
+      if (layerIndex < network.length - 1) {
+        neuronObj.weights = n.output.map(w => w.value);
+      }
+      return neuronObj;
+    });
+  });
   console.log(`trainedNet JSON:`, JSON.stringify(trainedNet));
 };
 
@@ -75,12 +83,10 @@ const run = (input, expected = []) => {
     const nextLayer = network[layerIndex + 1] || [];
     layer.forEach((neuron, neuronIndex) => {
       neuron.output.forEach((weight, weightIndex) => {
-        nextLayer[weightIndex].value = nextLayer[weightIndex].value + weight.value * neuron.value;
+        nextLayer[weightIndex].value += weight.value * neuron.value;
       });
     });
-    nextLayer.forEach((neuron, neuronIndex) => {
-      neuron.value = sigmoid(neuron.bias + neuron.value); // bias + sum
-    });
+    nextLayer.forEach((neuron, neuronIndex) => (neuron.value = sigmoid(neuron.value + neuron.bias)));
   });
 
   // TRAIN:
