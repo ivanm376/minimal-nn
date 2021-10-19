@@ -43,17 +43,17 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
 const round = x => Math.round(x * 10000) / 10000; // 0.4115000143.. -> 0.4115
 const joinString = i => i.join(' | ').slice(0, 90);
 const weightString = w => `id:${w.id} value:${round(w.value)} change:${round(w.change)}`;
+const layerMap = neuron => ({
+  id: neuron.id,
+  layer: `L${neuron.layerId}`,
+  ['input weights']: joinString(neuron.input.map(weightString)),
+  value: round(neuron.value),
+  bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
+  delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
+  error: typeof neuron.error === 'number' ? round(neuron.error) : '',
+  ['output weights']: joinString(neuron.output.map(weightString)),
+});
 const printNetwork = () => {
-  const layerMap = neuron => ({
-    id: neuron.id,
-    layer: `L${neuron.layerId}`,
-    ['input weights']: joinString(neuron.input.map(weightString)),
-    value: round(neuron.value),
-    bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
-    delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
-    error: typeof neuron.error === 'number' ? round(neuron.error) : '',
-    ['output weights']: joinString(neuron.output.map(weightString)),
-  });
   console.table(network.flat(1).map(layerMap));
   const trainedNet = network.map((layer, layerIndex) => {
     return layer.map(n => {
@@ -123,7 +123,7 @@ const run = (input, expected = []) => {
     }
   }
 
-  return network[network.length - 1].map(i => i.value); // result - last layer values
+  return network[network.length - 1].map(i => i.value); // last layer values
 };
 
 for (let i = 0; i < 10000; i++) {
@@ -132,7 +132,7 @@ for (let i = 0; i < 10000; i++) {
   const input = expected.map(x => round((Math.random() + x) / 2));
   run(input, expected); // train
   if (i % 500 === 0) {
-    const result = run([0.2, 0.6]); // expected [0, 1];
+    const result = run([0.2, 0.6]); // expected [0, 1]
     if (result[0] < 0.02) {
       console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
       break;
