@@ -49,8 +49,8 @@ const layerMap = neuron => ({
   ['input weights']: joinString(neuron.input.map(weightString)),
   value: round(neuron.value),
   bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
-  delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
   error: typeof neuron.error === 'number' ? round(neuron.error) : '',
+  delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
   ['output weights']: joinString(neuron.output.map(weightString)),
 });
 const printNetwork = () => {
@@ -113,7 +113,7 @@ const run = (input, expected = []) => {
     for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
-      layer.forEach((neuron, neuronIndex) => {
+      layer.forEach(neuron => {
         neuron.input.forEach((weight, weightIndex) => {
           weight.change = learnRate * neuron.delta * prevLayer[weightIndex].value + momentum * weight.change;
           weight.value += weight.change;
