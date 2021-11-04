@@ -5,8 +5,13 @@ let trainedNet; // pre-trained network example, uncomment bellow:
 //   [{ bias: 3.3835733329507174 }, { bias: -4.372771104374529 }],
 // ];
 
+const fs = require('fs');
+const images = fs.readFileSync('./dataset/train-images-idx3-ubyte');
+const labels = fs.readFileSync('./dataset/train-labels-idx3-ubyte');
+debugger;
+
 // NETWORK INITIALIZATION:
-const layers = [2, 1, 2];
+const layers = [784, 256, 128, 10];
 const network = [];
 let neuronId = 0;
 let weightId = 0;
@@ -111,6 +116,7 @@ const run = (input, expected = []) => {
 
     // ADJUST WEIGHTS:
     for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
+      // break;
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
       layer.forEach(neuron => {
@@ -130,6 +136,7 @@ for (let i = 0; i < 10000; i++) {
   const expected = [Math.floor(Math.random() * 2)];
   expected[1] = expected[0] === 0 ? 1 : 0;
   const input = expected.map(x => round((Math.random() + x) / 2));
+  // const result = run([0.2, 0.6], [0, 1]); // expected [0, 1]
   run(input, expected); // train
   if (i % 500 === 0) {
     const result = run([0.2, 0.6]); // expected [0, 1]
