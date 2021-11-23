@@ -161,17 +161,11 @@ var z = [
 var resultHTML = '', id = 0;
 for(let i = 0; i<28; i++){
   for (let j = 0; j<28;j++) {
-    resultHTML += `<div style="background-color:rgb(${z[i+j*28]} 0 0);color:white;">${id++}</div>`;
+    resultHTML += `<div style="width:26px;height:26px;display:inline-block;background-color:rgb( ${z[i+j*28]} 0 0);color:white;">${id++}</div>`;
   }
   resultHTML += '<br>'
 }
 document.body.innerHTML = resultHTML;0;
-
-div {
-  width: 30px;
-  height: 30px;
-  display: inline-block;
-}
 
 */
 
@@ -188,13 +182,11 @@ const run2 = async () => {
   let i = 0;
   while (true) {
     i++;
-    await new Promise(resolve => setTimeout(resolve, 1));
+    await new Promise(resolve => setTimeout(resolve, 1)); // delay to allow Ctrl+C interruption
     const id = Math.floor(Math.random() * pixelValues.length);
-
     const expected = Array(10)
       .fill(0)
       .map((j, index) => (pixelValues[id].value === index ? 1 : 0));
-
     run(pixelValues[id].pixels, expected); // train
     if (i % 100 === 0) {
       const testId2 = 4000; // 7
