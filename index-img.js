@@ -6,9 +6,30 @@ let trainedNet; // pre-trained network example, uncomment bellow:
 // ];
 
 const fs = require('fs');
-const images = fs.readFileSync('./dataset/train-images-idx3-ubyte');
-const labels = fs.readFileSync('./dataset/train-labels-idx3-ubyte');
-debugger;
+const dataFileBuffer = fs.readFileSync('./dataset/train-images-idx3-ubyte');
+const labelFileBuffer = fs.readFileSync('./dataset/train-labels-idx1-ubyte');
+const pixelValues = [];
+
+try {
+  trainedNet = JSON.parse(fs.readFileSync('network.json'));
+} catch (e) {}
+process.stdin.resume();
+process.on('SIGINT', () => {
+  mapNetwork();
+  fs.writeFileSync('network.json', JSON.stringify(trainedNet));
+  process.exit();
+});
+
+// for (let image = 0; image <= 59999; image++) {
+for (let image = 0; image <= 5000; image++) {
+  const pixels = [];
+  for (let x = 0; x <= 27; x++) {
+    for (let y = 0; y <= 27; y++) {
+      pixels.push(dataFileBuffer[image * 28 * 28 + (x + y * 28) + 15]);
+    }
+  }
+  pixelValues.push({ value: Number(JSON.stringify(labelFileBuffer[image + 8])), pixels });
+}
 
 // NETWORK INITIALIZATION:
 const layers = [784, 256, 128, 10];
@@ -58,9 +79,8 @@ const layerMap = neuron => ({
   delta: typeof neuron.delta === 'number' ? round(neuron.delta) : '',
   ['output weights']: joinString(neuron.output.map(weightString)),
 });
-const printNetwork = () => {
-  console.table(network.flat(1).map(layerMap));
-  const trainedNet = network.map((layer, layerIndex) => {
+const mapNetwork = () => {
+  trainedNet = network.map((layer, layerIndex) => {
     return layer.map(n => {
       const neuronObj = {};
       if (layerIndex > 0) {
@@ -72,6 +92,10 @@ const printNetwork = () => {
       return neuronObj;
     });
   });
+};
+const printNetwork = () => {
+  console.table(network.flat(1).map(layerMap));
+  mapNetwork();
   console.log(`trainedNet JSON:`, JSON.stringify(trainedNet));
 };
 
@@ -116,7 +140,6 @@ const run = (input, expected = []) => {
 
     // ADJUST WEIGHTS:
     for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
-      // break;
       const layer = network[layerIndex];
       const prevLayer = network[layerIndex - 1] || [];
       layer.forEach(neuron => {
@@ -132,21 +155,24 @@ const run = (input, expected = []) => {
   return network[network.length - 1].map(i => i.value); // last layer values
 };
 
-for (let i = 0; i < 10000; i++) {
-  const expected = [Math.floor(Math.random() * 2)];
-  expected[1] = expected[0] === 0 ? 1 : 0;
-  const input = expected.map(x => round((Math.random() + x) / 2));
-  // const result = run([0.2, 0.6], [0, 1]); // expected [0, 1]
-  run(input, expected); // train
+for (let i = 0; i < pixelValues.length; i++) {
+  const expected = Array(10)
+    .fill(0)
+    .map((j, index) => (pixelValues[i].value === index ? 1 : 0));
+  run(pixelValues[i].pixels, expected); // train
   if (i % 500 === 0) {
-    const result = run([0.2, 0.6]); // expected [0, 1]
-    if (result[0] < 0.02) {
-      console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
-      break;
-    } else {
-      console.log(`iteration: ${i}\t\t`, result);
-    }
+    const result = run(pixelValues[4888].pixels);
+    // if (result[0] < 0.02) {
+    //   console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
+    //   break;
+    // } else {
+    console.log(
+      `iteration: ${i}\t\t`,
+      pixelValues[4888].value,
+      result.map((i, index) => `${index} : ${round(i)}`).join('\t')
+    );
+    // }
   }
 }
 
-printNetwork();
+// printNetwork();
