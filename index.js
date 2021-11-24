@@ -8,21 +8,21 @@ let trainedNet; // pre-trained network example, uncomment bellow:
 // NETWORK INITIALIZATION:
 const layers = [2, 1, 2];
 const network = [];
-let neuronId = 0;
-let weightId = 0;
+let neuronID = 0;
+let weightID = 0;
 const getRandom = () => Math.random() * 0.4 - 0.2; // brain.js:1413
-layers.forEach((neuronsCountCurrentLayer, index) => {
-  const neuronsCountPrevLayer = layers[index - 1];
-  const neuronsCountNextLayer = layers[index + 1];
+layers.forEach((neuronsCountCurrentLayer, layerID) => {
+  const neuronsCountPrevLayer = layers[layerID - 1];
+  const neuronsCountNextLayer = layers[layerID + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
-    const neuron = { input: [], output: [], id: neuronId++, layerId: index };
-    if (index > 0) {
+    const neuron = { input: [], output: [], id: neuronID++, layerID };
+    if (layerID > 0) {
       neuron.value = neuron.delta = neuron.error = 0;
-      neuron.bias = trainedNet ? trainedNet[index][i].bias : getRandom();
+      neuron.bias = trainedNet ? trainedNet[layerID][i].bias : getRandom();
     }
     if (neuronsCountPrevLayer) {
-      network[index - 1].forEach(neuronPrev => {
+      network[layerID - 1].forEach(neuronPrev => {
         neuronPrev.output.forEach((weight, weightID) => {
           i === weightID && neuron.input.push(weight);
         });
@@ -30,8 +30,8 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
     }
     if (neuronsCountNextLayer) {
       for (let j = 0; j < neuronsCountNextLayer; j++) {
-        const weight = { change: 0, id: weightId++ };
-        weight.value = trainedNet ? trainedNet[index][i].weights[j] : getRandom();
+        const weight = { change: 0, id: weightID++ };
+        weight.value = trainedNet ? trainedNet[layerID][i].weights[j] : getRandom();
         neuron.output.push(weight);
       }
     }
@@ -45,7 +45,7 @@ const joinString = i => i.join(' | ').slice(0, 90);
 const weightString = w => `id:${w.id} value:${round(w.value)} change:${round(w.change)}`;
 const layerMap = neuron => ({
   id: neuron.id,
-  layer: `L${neuron.layerId}`,
+  layer: `L${neuron.layerID}`,
   ['input weights']: joinString(neuron.input.map(weightString)),
   value: round(neuron.value),
   bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
@@ -110,8 +110,8 @@ const run = (input, expected = []) => {
           neuron.error = expected[neuronID] - neuron.value;
         } else {
           neuron.error = 0;
-          for (let nextIndex = 0; nextIndex < nextLayer.length; nextIndex++) {
-            const neuronNext = nextLayer[nextIndex];
+          for (let nextID = 0; nextID < nextLayer.length; nextID++) {
+            const neuronNext = nextLayer[nextID];
             neuron.error += neuronNext.delta * neuronNext.input[neuronID].value;
           }
         }

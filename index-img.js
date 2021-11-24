@@ -26,32 +26,33 @@ for (let image = 0; image < 60000; image++) {
 }
 
 // NETWORK INITIALIZATION:
-const layers = [784, 392, 196, 49, 10];
+// const layers = [784, 392, 196, 49, 10];
+const layers = [784, 98, 49, 1];
 const network = [];
-let neuronId = 0;
-let weightId = 0;
+let neuronID = 0;
+let weightID = 0;
 const getRandom = () => Math.random() * 0.4 - 0.2; // brain.js:1413
-layers.forEach((neuronsCountCurrentLayer, index) => {
-  const neuronsCountPrevLayer = layers[index - 1];
-  const neuronsCountNextLayer = layers[index + 1];
+layers.forEach((neuronsCountCurrentLayer, layerID) => {
+  const neuronsCountPrevLayer = layers[layerID - 1];
+  const neuronsCountNextLayer = layers[layerID + 1];
   const layer = [];
   for (let i = 0; i < neuronsCountCurrentLayer; i++) {
-    const neuron = { input: [], output: [], id: neuronId++, layerId: index };
-    if (index > 0) {
+    const neuron = { input: [], output: [], id: neuronID++, layerID };
+    if (layerID > 0) {
       neuron.value = neuron.delta = neuron.error = 0;
-      neuron.bias = trainedNet ? trainedNet[index][i].bias : getRandom();
+      neuron.bias = trainedNet ? trainedNet[layerID][i].bias : getRandom();
     }
     if (neuronsCountPrevLayer) {
-      network[index - 1].forEach(neuronPrev => {
-        neuronPrev.output.forEach((weight, weightIndex) => {
-          i === weightIndex && neuron.input.push(weight);
+      network[layerID - 1].forEach(neuronPrev => {
+        neuronPrev.output.forEach((weight, weightID) => {
+          i === weightID && neuron.input.push(weight);
         });
       });
     }
     if (neuronsCountNextLayer) {
       for (let j = 0; j < neuronsCountNextLayer; j++) {
-        const weight = { change: 0, id: weightId++ };
-        weight.value = trainedNet ? trainedNet[index][i].weights[j] : getRandom();
+        const weight = { change: 0, id: weightID++ };
+        weight.value = trainedNet ? trainedNet[layerID][i].weights[j] : getRandom();
         neuron.output.push(weight);
       }
     }
@@ -65,7 +66,7 @@ const joinString = i => i.join(' | ').slice(0, 90);
 const weightString = w => `id:${w.id} value:${round(w.value)} change:${round(w.change)}`;
 const layerMap = neuron => ({
   id: neuron.id,
-  layer: `L${neuron.layerId}`,
+  layer: `L${neuron.layerID}`,
   ['input weights']: joinString(neuron.input.map(weightString)),
   value: round(neuron.value),
   bias: typeof neuron.bias === 'number' ? round(neuron.bias) : '',
@@ -96,7 +97,7 @@ const printNetwork = () => {
 // printNetwork();debugger;
 
 const sigmoid = x => 1 / (1 + Math.exp(-x));
-const learnRate = 0.03;
+const learnRate = 0.006;
 const momentum = 0.1;
 const run = (input, expected = []) => {
   // SET INITIAL VALUES:
@@ -133,8 +134,8 @@ const run = (input, expected = []) => {
           neuron.error = expected[neuronIndex] - neuron.value;
         } else {
           neuron.error = 0;
-          for (let nextIndex = 0; nextIndex < nextLayer.length; nextIndex++) {
-            const neuronNext = nextLayer[nextIndex];
+          for (let nextID = 0; nextID < nextLayer.length; nextID++) {
+            const neuronNext = nextLayer[nextID];
             neuron.error += neuronNext.delta * neuronNext.input[neuronIndex].value;
           }
         }
@@ -161,33 +162,40 @@ const run = (input, expected = []) => {
   return network[network.length - 1].map(i => i.value); // last layer values
 };
 
-// const testId = 4006;
-// console.log(testId, pixelValues[testId].value, JSON.stringify(pixelValues[testId].pixels));
-// for (let i = 0; i < 500; i++) {
-//   const testId = 4113 + i;
-//   if (pixelValues[testId].value !== 7 && pixelValues[testId].value !== 8) {
-//     continue;
+// for (let i = 0; i < 60; i++) {
+//   const testId = 1013 + i;
+//   if (testId === 1035 || testId === 1017) {
+//     console.log(testId, pixelValues[testId].value, JSON.stringify(pixelValues[testId].pixels));
 //   }
-//   const result = run(pixelValues[testId].pixels);
-//   console.log(pixelValues[testId].value, result.map((i, index) => `${index} : ${round(i)}`).join('\t'));
+//   // if (pixelValues[testId].value !== 7 && pixelValues[testId].value !== 8) {
+//   //   continue;
+//   // }
+//   // const result = run(pixelValues[testId].pixels);
+//   // console.log(testId, pixelValues[testId].value, result);
 // }
 // process.exit();
 
 const run2 = async () => {
-  for (let count = 0; true; count++) {
+  for (let count = 1; true; count++) {
     await new Promise(resolve => setTimeout(resolve, 1)); // delay to allow Ctrl+C interruption
     const id = Math.floor(Math.random() * pixelValues.length);
-    const expected = Array(10)
-      .fill(0)
-      .map((j, index) => (pixelValues[id].value === index ? 1 : 0));
+    // const expected = Array(10)
+    //   .fill(0)
+    //   .map((j, index) => (pixelValues[id].value === index ? 1 : 0));
+    let expected = [0];
+    if (pixelValues[id].value === 3) {
+      expected[0] = 1;
+    }
     run(pixelValues[id].pixels, expected); // train
     if (count % 100 === 0) {
       const testId2 = 4000; // 7
-      const testId3 = 4006; // 8
+      // const testId3 = 4006; // 8
+      const testId3 = 4154; // 3
       const result = run(pixelValues[testId2].pixels);
       const result2 = run(pixelValues[testId3].pixels);
-      if (result[7] > 0.8 && result2[8] > 0.8) {
-        console.log(`iteration: ${count}  \t - reached 80% level, training stopped`);
+      if (result[0] < 0.1 && result2[0] > 0.95) {
+        // if (result[7] > 0.8 && result2[8] > 0.8) {
+        console.log(`iteration: ${count}  \t - reached appropriate level, training stopped`);
         mapNetwork();
         fs.writeFileSync('network.json', JSON.stringify(trainedNet));
         process.exit();
@@ -196,9 +204,11 @@ const run2 = async () => {
         console.log(
           `iteration: ${count}     \t`,
           pixelValues[testId2].value,
-          result.map((i, index) => `${index} : ${round(i)}`)[7], // .join('\t'),
+          result,
+          // result.map((i, index) => `${index} : ${round(i)}`)[7], // .join('\t'),
           pixelValues[testId3].value,
-          result2.map((i, index) => `${index} : ${round(i)}`)[8]
+          result2
+          // result2.map((i, index) => `${index} : ${round(i)}`)[8]
         );
       }
     }
