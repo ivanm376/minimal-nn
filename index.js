@@ -23,8 +23,8 @@ layers.forEach((neuronsCountCurrentLayer, index) => {
     }
     if (neuronsCountPrevLayer) {
       network[index - 1].forEach(neuronPrev => {
-        neuronPrev.output.forEach((weight, weightIndex) => {
-          i === weightIndex && neuron.input.push(weight);
+        neuronPrev.output.forEach((weight, weightID) => {
+          i === weightID && neuron.input.push(weight);
         });
       });
     }
@@ -55,13 +55,13 @@ const layerMap = neuron => ({
 });
 const printNetwork = () => {
   console.table(network.flat(1).map(layerMap));
-  const trainedNet = network.map((layer, layerIndex) => {
+  const trainedNet = network.map((layer, layerID) => {
     return layer.map(n => {
       const neuronObj = {};
-      if (layerIndex > 0) {
+      if (layerID > 0) {
         neuronObj.bias = n.bias;
       }
-      if (layerIndex < network.length - 1) {
+      if (layerID < network.length - 1) {
         neuronObj.weights = n.output.map(w => w.value);
       }
       return neuronObj;
@@ -77,49 +77,61 @@ const learnRate = 0.7;
 const momentum = 0.1;
 const run = (input, expected = []) => {
   // SET INITIAL VALUES:
-  network[0].forEach((neuron, index) => (neuron.value = input[index])); // set input
+  for (let layerID = 0; layerID < network.length; layerID++) {
+    for (let neuronID = 0; neuronID < network[layerID].length; neuronID++) {
+      network[layerID][neuronID].value = layerID === 0 ? input[neuronID] : 0;
+    }
+  }
 
   // PROJECT VALUES:
-  network.forEach((layer, layerIndex) => {
-    const nextLayer = network[layerIndex + 1] || [];
-    layer.forEach((neuron, neuronIndex) => {
-      neuron.output.forEach((weight, weightIndex) => {
-        nextLayer[weightIndex].value += weight.value * neuron.value;
-      });
-    });
-    nextLayer.forEach((neuron, neuronIndex) => (neuron.value = sigmoid(neuron.value + neuron.bias)));
-  });
+  for (let layerID = 0; layerID < network.length; layerID++) {
+    const nextLayer = network[layerID + 1] || [];
+    for (let neuronID = 0; neuronID < network[layerID].length; neuronID++) {
+      const neuron = network[layerID][neuronID];
+      for (let weightID = 0; weightID < neuron.output.length; weightID++) {
+        nextLayer[weightID].value += neuron.output[weightID].value * neuron.value;
+      }
+    }
+    for (let neuronID = 0; neuronID < nextLayer.length; neuronID++) {
+      const neuron = nextLayer[neuronID];
+      neuron.value = sigmoid(neuron.value + neuron.bias);
+    }
+  }
 
   // TRAIN:
   if (expected.length) {
     // CALCULATE DELTAS:
-    for (let layerIndex = network.length - 1; layerIndex > 0; layerIndex--) {
-      const layer = network[layerIndex];
-      const nextLayer = network[layerIndex + 1] || [];
-      layer.forEach((neuron, neuronIndex) => {
-        if (layerIndex === network.length - 1) {
-          neuron.error = expected[neuronIndex] - neuron.value;
+    for (let layerID = network.length - 1; layerID > 0; layerID--) {
+      const layer = network[layerID];
+      const nextLayer = network[layerID + 1] || [];
+      for (let neuronID = 0; neuronID < layer.length; neuronID++) {
+        const neuron = layer[neuronID];
+        if (layerID === network.length - 1) {
+          neuron.error = expected[neuronID] - neuron.value;
         } else {
           neuron.error = 0;
-          nextLayer.forEach(neuronNext => {
-            neuron.error += neuronNext.delta * neuronNext.input[neuronIndex].value;
-          });
+          for (let nextIndex = 0; nextIndex < nextLayer.length; nextIndex++) {
+            const neuronNext = nextLayer[nextIndex];
+            neuron.error += neuronNext.delta * neuronNext.input[neuronID].value;
+          }
         }
         neuron.delta = neuron.error * neuron.value * (1 - neuron.value);
-      });
+      }
     }
 
     // ADJUST WEIGHTS:
-    for (let layerIndex = 1; layerIndex < network.length; layerIndex++) {
-      const layer = network[layerIndex];
-      const prevLayer = network[layerIndex - 1] || [];
-      layer.forEach(neuron => {
-        neuron.input.forEach((weight, weightIndex) => {
-          weight.change = learnRate * neuron.delta * prevLayer[weightIndex].value + momentum * weight.change;
+    for (let layerID = 1; layerID < network.length; layerID++) {
+      const layer = network[layerID];
+      const prevLayer = network[layerID - 1] || [];
+      for (let neuronID = 0; neuronID < layer.length; neuronID++) {
+        const neuron = layer[neuronID];
+        for (let weightID = 0; weightID < neuron.input.length; weightID++) {
+          const weight = neuron.input[weightID];
+          weight.change = learnRate * neuron.delta * prevLayer[weightID].value + momentum * weight.change;
           weight.value += weight.change;
-        });
+        }
         neuron.bias += learnRate * neuron.delta;
-      });
+      }
     }
   }
 
@@ -134,10 +146,10 @@ for (let i = 0; i < 10000; i++) {
   if (i % 500 === 0) {
     const result = run([0.2, 0.6]); // expected [0, 1]
     if (result[0] < 0.02) {
-      console.log(`iteration: ${i}\t\t`, result, `- reached 2% level, training stopped`);
+      console.log(`iteration: ${i}    \t`, result, `- reached 2% level, training stopped`);
       break;
     } else {
-      console.log(`iteration: ${i}\t\t`, result);
+      console.log(`iteration: ${i}    \t`, result);
     }
   }
 }
