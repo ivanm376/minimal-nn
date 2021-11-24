@@ -77,17 +77,21 @@ const learnRate = 0.7;
 const momentum = 0.1;
 const run = (input, expected = []) => {
   // SET INITIAL VALUES:
-  network[0].forEach((neuron, index) => (neuron.value = input[index])); // set input
+  for (let layerIndex = 0; layerIndex < network.length; layerIndex++) {
+    for (let neuronIndex = 0; neuronIndex < network[layerIndex].length; neuronIndex++) {
+      network[layerIndex][neuronIndex].value = layerIndex === 0 ? input[neuronIndex] : 0;
+    }
+  }
 
   // PROJECT VALUES:
   network.forEach((layer, layerIndex) => {
     const nextLayer = network[layerIndex + 1] || [];
-    layer.forEach((neuron, neuronIndex) => {
+    layer.forEach(neuron => {
       neuron.output.forEach((weight, weightIndex) => {
         nextLayer[weightIndex].value += weight.value * neuron.value;
       });
     });
-    nextLayer.forEach((neuron, neuronIndex) => (neuron.value = sigmoid(neuron.value + neuron.bias)));
+    nextLayer.forEach(neuron => (neuron.value = sigmoid(neuron.value + neuron.bias)));
   });
 
   // TRAIN:
