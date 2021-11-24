@@ -97,7 +97,7 @@ const printNetwork = () => {
 // printNetwork();debugger;
 
 const sigmoid = x => 1 / (1 + Math.exp(-x));
-const learnRate = 0.006;
+const learnRate = 0.005;
 const momentum = 0.1;
 const run = (input, expected = []) => {
   // SET INITIAL VALUES:
@@ -162,16 +162,13 @@ const run = (input, expected = []) => {
   return network[network.length - 1].map(i => i.value); // last layer values
 };
 
-// for (let i = 0; i < 60; i++) {
-//   const testId = 1013 + i;
-//   if (testId === 1035 || testId === 1017) {
-//     console.log(testId, pixelValues[testId].value, JSON.stringify(pixelValues[testId].pixels));
-//   }
-//   // if (pixelValues[testId].value !== 7 && pixelValues[testId].value !== 8) {
-//   //   continue;
+// for (let i = 0; i < 4000; i++) {
+//   const testId = 14313 + i;
+//   // if (testId === 1035 || testId === 1017) {
+//   //   console.log(testId, pixelValues[testId].value, JSON.stringify(pixelValues[testId].pixels));
 //   // }
-//   // const result = run(pixelValues[testId].pixels);
-//   // console.log(testId, pixelValues[testId].value, result);
+//   const result = run(pixelValues[testId].pixels);
+//   result[0] > 0.8 && console.log(testId, pixelValues[testId].value, result);
 // }
 // process.exit();
 
@@ -182,18 +179,19 @@ const run2 = async () => {
     // const expected = Array(10)
     //   .fill(0)
     //   .map((j, index) => (pixelValues[id].value === index ? 1 : 0));
-    let expected = [0];
-    if (pixelValues[id].value === 3) {
+    const expected = [0];
+    if (pixelValues[id].value === 4) {
       expected[0] = 1;
     }
     run(pixelValues[id].pixels, expected); // train
     if (count % 100 === 0) {
       const testId2 = 4000; // 7
       // const testId3 = 4006; // 8
-      const testId3 = 4154; // 3
+      // const testId3 = 4154; // 3
+      const testId3 = 34379; // 4
       const result = run(pixelValues[testId2].pixels);
       const result2 = run(pixelValues[testId3].pixels);
-      if (result[0] < 0.1 && result2[0] > 0.95) {
+      if (result[0] < 0.1 && result2[1] > 0.9) {
         // if (result[7] > 0.8 && result2[8] > 0.8) {
         console.log(`iteration: ${count}  \t - reached appropriate level, training stopped`);
         mapNetwork();
