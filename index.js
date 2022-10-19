@@ -101,11 +101,8 @@ const run = (input, expected = []) => {
       const layer = network[layerIndex];
       const nextLayer = network[layerIndex + 1] || [];
       layer.forEach((neuron, neuronIndex) => {
-        if (layerIndex === network.length - 1) {
-          neuron.error = expected[neuronIndex] - neuron.value;
-        } else {
-          neuron.error = 0;
-          nextLayer.forEach(neuronNext => {
+          neuron.error = layerIndex !== network.length - 1  expected[neuronIndex] - neuron.value : 0;
+          layerIndex !== network.length - 1 && nextLayer.forEach(neuronNext => {
             neuron.error += neuronNext.delta * neuronNext.input[neuronIndex].value;
           });
         }
